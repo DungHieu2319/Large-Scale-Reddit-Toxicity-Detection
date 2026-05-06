@@ -71,7 +71,7 @@ def run_feature_engineering():
 
     # ── 3. TF-IDF + NORMALIZE ─────────────────────────────────────────────────
     print("🔢 Building TF-IDF + L2 Normalize...")
-    hashingTF  = HashingTF(inputCol="words", outputCol="rawFeatures", numFeatures=1000)
+    hashingTF  = HashingTF(inputCol="words", outputCol="rawFeatures", numFeatures=5000)
     idf        = IDF(inputCol="rawFeatures", outputCol="tfidf", minDocFreq=5)
     normalizer = Normalizer(inputCol="tfidf", outputCol="features", p=2.0)
 
