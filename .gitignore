@@ -398,6 +398,15 @@ FodyWeavers.xsd
 
 # VS Code files for those working on multiple tools
 .vscode/*
+
+# Ignore large data and model outputs
+data/
+outputs/
+outputs.zip
+## parquet / temporary files
+**/*.parquet
+**/*.snappy.parquet
+**/*.crc
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
