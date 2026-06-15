@@ -21,9 +21,6 @@ Dự án được chia thành 2 luồng tiếp cận chính để so sánh hiệ
   - `src/models/finetune_bert.py`
   - `src/models/train_distilbert_streaming.py`
 
-### 3. Web API (FastAPI)
-- Expose các mô hình đã huấn luyện thành RESTful API, cho phép các ứng dụng giao diện (Front-end) gửi văn bản lên và nhận lại dự đoán độ độc hại theo thời gian thực.
-
 ## Cấu trúc thư mục (Directory Structure)
 ```text
 ├── data/                  # Thư mục chứa dữ liệu thô (raw) và đã xử lý (processed)
