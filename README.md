@@ -26,7 +26,6 @@ Dự án được chia thành 2 luồng tiếp cận chính để so sánh hiệ
 ├── data/                  # Thư mục chứa dữ liệu thô (raw) và đã xử lý (processed)
 ├── outputs/               # Chứa các mô hình đã được huấn luyện (Spark, PyTorch)
 ├── src/                   # Mã nguồn chính
-│   ├── app/               # FastAPI backend phục vụ dự đoán
 │   ├── evaluation/        # Mã nguồn đánh giá (Metrics)
 │   ├── features/          # Feature Engineering (TF-IDF, Embeddings)
 │   ├── models/            # Mã nguồn huấn luyện (Spark LR, BERT)
