@@ -1,57 +1,71 @@
+import os
+import sys
+
+# ── FIX CHO WINDOWS ─────────────────────────────────────────
+os.environ["PYSPARK_PYTHON"] = sys.executable
+os.environ["PYSPARK_DRIVER_PYTHON"] = sys.executable
+os.makedirs("C:/Temp", exist_ok=True)
+
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, lower, regexp_replace
+from pyspark.sql.functions import col, lower, regexp_replace, size
 from pyspark.ml.feature import Tokenizer, StopWordsRemover
 
 
 def run_preprocessing():
-
     print("🚀 Starting Spark...")
 
-    spark = SparkSession.builder \
-        .appName("Toxic Detection") \
-        .config("spark.driver.memory", "4g") \
-        .config("spark.sql.shuffle.partitions", "8") \
-        .config("spark.driver.extraJavaOptions", "--add-opens=java.base/javax.security.auth=ALL-UNNAMED") \
+    spark = (
+        SparkSession.builder.appName("Toxic Detection Preprocessing")
+        .master("local[*]")
+        .config("spark.driver.memory", "10g")
+        .config("spark.executor.memory", "10g")
+        .config("spark.driver.maxResultSize", "4g")
+        .config("spark.sql.shuffle.partitions", "16")
+        .config(
+            "spark.driver.extraJavaOptions",
+            "-Djava.io.tmpdir=C:/Temp "
+            "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED "
+            "--add-opens=java.base/java.lang=ALL-UNNAMED",
+        )
         .getOrCreate()
+    )
 
     spark.sparkContext.setLogLevel("ERROR")
 
-    print("📂 Loading data...")
+    # ── 1. LOAD DATA ────────────────────────────────────────
+    print("📂 Loading data (PARQUET)...")
+    df = spark.read.parquet("data/raw/RC_2015-10.parquet")
+    df = df.select("body").dropna()
 
-    df = spark.read.csv(
-        "data/raw/reddit_sample.csv",
-        header=True,
-        multiLine=True,
-        escape='"'
-    )
-
-    df = df.select("body").dropna().limit(200000)
-
-    print("🧹 Cleaning text (FAST)...")
-
+    # ── 2. CLEAN TEXT ───────────────────────────────────────
+    print("🧹 Cleaning text...")
     df = df.withColumn("clean_text", lower(col("body")))
     df = df.withColumn("clean_text", regexp_replace(col("clean_text"), r"http\S+", ""))
     df = df.withColumn("clean_text", regexp_replace(col("clean_text"), r"[^a-z\s]", ""))
 
+    # ── 3. TOKENIZE ─────────────────────────────────────────
     print("🔤 Tokenizing...")
-
     tokenizer = Tokenizer(inputCol="clean_text", outputCol="words")
     df = tokenizer.transform(df)
 
-    print("🧠 Removing stopwords...")
-
+    # ── 4. REMOVE STOPWORDS ─────────────────────────────────
+    print("🚫 Removing stopwords...")
     remover = StopWordsRemover(inputCol="words", outputCol="filtered")
     df = remover.transform(df)
 
-    print("💾 Saving...")
+    # ── 5. FILTER EMPTY ROWS ────────────────────────────────
+    print("⚠️ Filtering empty rows...")
+    df = df.filter(size(col("filtered")) > 0)
 
-    df.select("clean_text") \
-        .write \
-        .mode("overwrite") \
-        .option("header", True) \
-        .csv("data/processed/processed_data")
+    # ── 6. SAVE ─────────────────────────────────────────────
+    # ✅ bỏ hết count() để tránh crash — chỉ save thẳng
+    print("💾 Saving processed data (PARQUET)...")
+    df.select("clean_text").write.mode("overwrite").parquet(
+        "data/processed/processed_data"
+    )
 
-    print("✅ DONE!")
+    print("✅ PREPROCESS DONE!")
+    spark.stop()
 
 
 if __name__ == "__main__":
