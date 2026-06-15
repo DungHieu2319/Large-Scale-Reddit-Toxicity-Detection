@@ -17,22 +17,6 @@ from pyspark.sql.functions import (
 from pyspark.ml.feature import HashingTF, IDF, Normalizer, Tokenizer
 from pyspark.ml import Pipeline
 
-# ══════════════════════════════════════════════════════════════════════════════
-# TẠI SAO BỎ KMEANS? (giải thích cho giám khảo)
-# ══════════════════════════════════════════════════════════════════════════════
-# KMeans hoạt động tốt với low-dimensional dense data.
-# Với TF-IDF sparse 5000 dims + 47M records:
-#   - Silhouette = -0.0045 (âm = cluster vô nghĩa)
-#   - Curse of dimensionality: khoảng cách Euclidean mất ý nghĩa ở 5000 dims
-#   - Tốn 57GB checkpoint, chạy hàng giờ không xong
-#
-# THAY BẰNG: Rule-based hybrid labeling
-#   - Nhanh hơn 10x (một lần scan thay vì iterate 10 vòng)
-#   - Không cần checkpoint → không tốn disk
-#   - Label chất lượng tốt hơn → AUC/F1 cao hơn ở train
-#   - Interpretable: giải thích được 100% với giám khảo
-# ══════════════════════════════════════════════════════════════════════════════
-
 TOXIC_KEYWORDS = [
     # Insults
     "idiot", "idiots", "stupid", "moron", "morons", "dumb", "dumbass",
@@ -103,12 +87,12 @@ def create_spark_session():
 
 def run_feature_engineering():
     t_start = time.time()
-    print("🚀 Starting Spark (v5 - Rule-Based, No KMeans, No Checkpoint)...")
+    print("Starting Spark (v5 - Rule-Based, No KMeans, No Checkpoint)...")
     spark = create_spark_session()
     spark.sparkContext.setLogLevel("ERROR")
 
     # ── 1. LOAD DATA ──────────────────────────────────────────────────────────
-    print("\n📂 Loading full dataset...")
+    print("\nLoading full dataset...")
     df = spark.read.parquet("data/processed/processed_data3")
     df = df.dropna(subset=["clean_text"])
 
@@ -116,7 +100,7 @@ def run_feature_engineering():
     df.select("clean_text").show(5, truncate=True)
 
     # ── 2. TOKENIZE ───────────────────────────────────────────────────────────
-    print("✂️  Tokenizing...")
+    print(" Tokenizing...")
     tokenizer = Tokenizer(inputCol="clean_text", outputCol="words")
     df        = tokenizer.transform(df)
     df        = df.filter(size(col("words")) >= 3)
@@ -152,7 +136,7 @@ def run_feature_engineering():
         )
 
     # ── 4. THỐNG KÊ — một groupBy duy nhất ───────────────────────────────────
-    print("\n📊 Computing label statistics...")
+    print("\nComputing label statistics...")
     label_stats = df.groupBy("label").agg(
     count("*").alias("count"),
     avg("has_keyword").alias("keyword_ratio"),
@@ -173,19 +157,14 @@ def run_feature_engineering():
     print(f"{'='*50}")
 
     if toxic_pct > 40:
-        print("  ⚠️  Toxic ratio cao — threshold quá rộng")
+        print("  Toxic ratio cao — threshold quá rộng")
     elif toxic_pct < 3:
-        print("  ⚠️  Toxic ratio thấp — có thể mở rộng keyword list")
+        print("  Toxic ratio thấp — có thể mở rộng keyword list")
     else:
-        print("  ✅ Toxic ratio hợp lý")
+        print("  Toxic ratio hợp lý")
 
-    # ── 5. TF-IDF + NORMALIZE ────────────────────────────────────────────────
-    # numFeatures=500 thay vì 5000:
-    #   - Giảm curse of dimensionality cho downstream classifier
-    #   - Training nhanh hơn ~10x
-    #   - Top 500 TF-IDF features đủ phân biệt toxic vs non-toxic
-    #   - minDocFreq=10: bỏ từ xuất hiện < 10 lần → giảm noise
-    print("\n🔢 Building TF-IDF pipeline (numFeatures=500, minDocFreq=10)...")
+
+    print("\n Building TF-IDF pipeline (numFeatures=500, minDocFreq=10)...")
     hashingTF  = HashingTF(inputCol="words", outputCol="rawFeatures", numFeatures=500)
     idf        = IDF(inputCol="rawFeatures", outputCol="tfidf", minDocFreq=10)
     normalizer = Normalizer(inputCol="tfidf", outputCol="features", p=2.0)
@@ -197,7 +176,7 @@ def run_feature_engineering():
     # ── 6. SAVE FEATURES ─────────────────────────────────────────────────────
     # Ghi thẳng output cuối vì sau bước này DataFrame không còn được dùng lại.
     # Tránh ghi rồi đọc cache trung gian, giúp giảm I/O và áp lực bộ nhớ.
-    print("\n💾 Saving final features (partitioned by label)...")
+    print("\nSaving final features (partitioned by label)...")
     # partitionBy("label"): big data pattern
     # Downstream model chỉ cần đọc partition label=1.0 và label=0.0
     # Không cần scan toàn bộ data → predicate pushdown
@@ -243,7 +222,7 @@ def run_feature_engineering():
         f.write(f"kmeans_silhouette_was=-0.0045\n")
         f.write(f"pipeline_time_minutes={duration/60:.1f}\n")
 
-    print("\n✅ Feature Engineering v5 DONE!")
+    print("\nFeature Engineering v5 DONE!")
     print("   Features → data/processed/features3/ (partitioned by label)")
     print("   Model    → outputs/pipeline_model3")
     print("   Metrics  → outputs/metrics_features1.txt")
