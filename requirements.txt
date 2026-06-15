@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Big Data Processing
 pyspark>=3.3.0
 pyarrow>=10.0.1
@@ -24,3 +25,9 @@ wordcloud>=1.9.2
 fastapi>=0.100.0
 uvicorn>=0.23.0
 pydantic>=2.0.0
+=======
+numpy==2.2.6
+py4j==0.10.9.7
+pyspark==3.5.1
+setuptools==65.5.0
+>>>>>>> f5ae4b36bd614399a180a2d8edc9d4693d66a5ad
