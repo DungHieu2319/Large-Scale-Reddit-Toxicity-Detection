@@ -1,7 +1,6 @@
 import os
 import sys
 
-# ── FIX CHO WINDOWS ───────────────────────────────────────────────────────────
 os.environ["PYSPARK_PYTHON"]        = sys.executable
 os.environ["PYSPARK_DRIVER_PYTHON"] = sys.executable
 os.makedirs("D:/SparkTemp", exist_ok=True)
@@ -42,14 +41,13 @@ def run_training():
     spark.sparkContext.setLogLevel("ERROR")
     spark.sparkContext.setCheckpointDir("D:/SparkTemp/spark-checkpoint")
 
-    # ── 1. LOAD FEATURES ─────────────────────────────────────────────────────
     print("Loading features...")
 
     FEATURE_PATHS = {
         "Feature 1": "data/processed/features",
         "Feature 2": "data/processed/features1",
         "Feature 3": "data/processed/features2", 
-        "Feature 4": "data/processed/features3", # Bạn có thể sửa tên thư mục ở đây
+        "Feature 4": "data/processed/features3", 
     }
 
     dfs = []
@@ -65,8 +63,6 @@ def run_training():
 
     for name, path in FEATURE_PATHS.items():
         if os.path.exists(path):
-            # Read only columns needed for training. In particular, do not keep
-            # clean_text in the training plan because it is the largest column.
             tmp = spark.read.parquet(path).select("features", "label")
             dim = get_feature_dim(tmp)
 
@@ -89,7 +85,7 @@ def run_training():
             print(f" {name}: không tìm thấy {path} — bỏ qua")
 
     if not dfs:
-        print("❌ Không có features nào!")
+        print("- Không có features nào!")
         spark.stop()
         return
 
@@ -114,7 +110,7 @@ def run_training():
     weight   = round(nontoxic / toxic, 2) if toxic > 0 else 1.0
 
     if total == 0:
-        print("❌ Dataset không có bản ghi hợp lệ để train.")
+        print("Dataset không có bản ghi hợp lệ để train.")
         spark.stop()
         return
 
@@ -124,13 +120,13 @@ def run_training():
     print(f"   Non-toxic: {nontoxic:,} ({nontoxic/total*100:.1f}%)")
     print(f"   Weight   : Toxic×{weight} | Non-toxic×1.0")
 
-    # ── 3. CLASS WEIGHT ───────────────────────────────────────────────────────
+
     df = df.withColumn(
         "classWeight",
         when(col("label") == 1.0, weight).otherwise(1.0)
     )
 
-    # ── 4. TRAIN TOÀN BỘ ─────────────────────────────────────────────────────
+
     print("\nTraining Logistic Regression trên toàn bộ data...")
     lr = LogisticRegression(
         featuresCol="features",
