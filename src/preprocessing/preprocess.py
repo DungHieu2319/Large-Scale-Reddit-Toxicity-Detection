@@ -56,7 +56,7 @@ def run_preprocessing():
 
     # ── 6. SAVE ─────────────────────────────────────────────
     # bỏ hết count() để tránh crash — chỉ save thẳng
-    print("💾 Saving processed data (PARQUET)...")
+    print("Saving processed data (PARQUET)...")
     df.select("clean_text") \
         .write \
         .mode("overwrite") \
