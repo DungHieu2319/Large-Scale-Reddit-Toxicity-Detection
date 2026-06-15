@@ -1,7 +1,6 @@
 import os
 import sys
 
-# ── FIX CHO WINDOWS ───────────────────────────────────────────────────────────
 os.environ["PYSPARK_PYTHON"]        = sys.executable
 os.environ["PYSPARK_DRIVER_PYTHON"] = sys.executable
 os.makedirs("D:/SparkTemp", exist_ok=True)
@@ -42,14 +41,13 @@ def run_training():
     spark.sparkContext.setLogLevel("ERROR")
     spark.sparkContext.setCheckpointDir("D:/SparkTemp/spark-checkpoint")
 
-    # ── 1. LOAD FEATURES ─────────────────────────────────────────────────────
     print("Loading features...")
 
     FEATURE_PATHS = {
         "Feature 1": "data/processed/features",
         "Feature 2": "data/processed/features1",
         "Feature 3": "data/processed/features2", 
-        "Feature 4": "data/processed/features3", # Bạn có thể sửa tên thư mục ở đây
+        "Feature 4": "data/processed/features3", 
     }
 
     dfs = []
@@ -65,8 +63,6 @@ def run_training():
 
     for name, path in FEATURE_PATHS.items():
         if os.path.exists(path):
-            # Read only columns needed for training. In particular, do not keep
-            # clean_text in the training plan because it is the largest column.
             tmp = spark.read.parquet(path).select("features", "label")
             dim = get_feature_dim(tmp)
 
@@ -97,13 +93,8 @@ def run_training():
     df = dfs[0]
     for d in dfs[1:]:
         df = df.unionByName(d)
-
-    # Keep the source parquet partitions. The dataset is much larger than the
-    # JVM heap, so coalescing it to 16 partitions and caching it can OOM while
-    # Spark builds cached column batches.
     df = df.select("features", "label").dropna(subset=["features", "label"])
 
-    # ── 2. THỐNG KÊ ───────────────────────────────────────────────────────────
     label_counts = {
         int(row["label"]): row["count"]
         for row in df.groupBy("label").count().collect()
@@ -124,13 +115,13 @@ def run_training():
     print(f"   Non-toxic: {nontoxic:,} ({nontoxic/total*100:.1f}%)")
     print(f"   Weight   : Toxic×{weight} | Non-toxic×1.0")
 
-    # ── 3. CLASS WEIGHT ───────────────────────────────────────────────────────
+
     df = df.withColumn(
         "classWeight",
         when(col("label") == 1.0, weight).otherwise(1.0)
     )
 
-    # ── 4. TRAIN TOÀN BỘ ─────────────────────────────────────────────────────
+
     print("\nTraining Logistic Regression trên toàn bộ data...")
     lr = LogisticRegression(
         featuresCol="features",
