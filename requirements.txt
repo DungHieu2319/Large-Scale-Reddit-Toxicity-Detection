@@ -1,0 +1,26 @@
+# Big Data Processing
+pyspark>=3.3.0
+pyarrow>=10.0.1
+pandas>=1.5.0
+numpy>=1.23.0
+
+# Deep Learning & NLP
+torch>=2.0.0
+transformers>=4.30.0
+datasets>=2.14.0
+evaluate>=0.4.0
+scikit-learn>=1.2.0
+
+# Performance & Optimization
+tqdm>=4.65.0
+onnxruntime>=1.15.0
+
+# Data Visualization & EDA
+matplotlib>=3.7.0
+seaborn>=0.12.0
+wordcloud>=1.9.2
+
+# Web API & UI
+fastapi>=0.100.0
+uvicorn>=0.23.0
+pydantic>=2.0.0
