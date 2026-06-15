@@ -108,14 +108,6 @@ def run_feature_engineering():
     total = df.count()
     print(f"   Total records: {total:,}")
 
-    # ── 3. RULE-BASED LABELING — THAY THẾ KMEANS ─────────────────────────────
-    # Chiến lược hybrid 2 signal:
-    #   Signal 1 — Keyword match: từ đơn trong TOXIC_KEYWORDS
-    #   Signal 2 — Phrase match: cụm từ toxic theo ngữ cảnh
-    #
-    # Label = 1 nếu có BẤT KỲ signal nào
-    # Giải thích kỹ thuật: phrase pattern bắt được context
-    # ("kill it at the gym" ≠ toxic, "go die" = toxic)
     print("\n🔍 Applying rule-based toxic labeling...")
 
     df = df \
@@ -135,7 +127,6 @@ def run_feature_engineering():
             ).otherwise(0.0)
         )
 
-    # ── 4. THỐNG KÊ — một groupBy duy nhất ───────────────────────────────────
     print("\nComputing label statistics...")
     label_stats = df.groupBy("label").agg(
     count("*").alias("count"),
@@ -172,14 +163,6 @@ def run_feature_engineering():
     pipeline    = Pipeline(stages=[hashingTF, idf, normalizer])
     tfidf_model = pipeline.fit(df)
     df_features = tfidf_model.transform(df)
-
-    # ── 6. SAVE FEATURES ─────────────────────────────────────────────────────
-    # Ghi thẳng output cuối vì sau bước này DataFrame không còn được dùng lại.
-    # Tránh ghi rồi đọc cache trung gian, giúp giảm I/O và áp lực bộ nhớ.
-    print("\nSaving final features (partitioned by label)...")
-    # partitionBy("label"): big data pattern
-    # Downstream model chỉ cần đọc partition label=1.0 và label=0.0
-    # Không cần scan toàn bộ data → predicate pushdown
     df_features.select("clean_text", "label", "features") \
         .write \
         .mode("overwrite") \
